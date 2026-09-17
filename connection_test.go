@@ -140,10 +140,14 @@ func TestReceiveLoop_ReadKeepaliveRefreshOnTraffic(t *testing.T) {
 	_, err := server.Write([]byte("Content-Type: auth/request\r\n\r\n"))
 	assert.NoError(t, err)
 
-	// 持续小流量 1s（每 100ms 一帧，均短于 300ms 保活窗）
+	// 持续小流量 1s（每 100ms 一帧 event-plain，均短于 300ms 保活窗）。
+	// 用 event 帧而非 auth/request：eventLoop goroutine 持续消费
+	// TypeEventPlain（与生产事件流同构）；auth/request 的消费方是
+	// authLoop（本测试未启动），缓冲满后 doMessage 会阻塞 5s 污染时序。
+	eventFrame := []byte("Content-Type: text/event-plain\r\nContent-Length: 25\r\n\r\nEvent-Name: HEARTBEAT\r\n\r\n")
 	for i := 0; i < 10; i++ {
 		time.Sleep(100 * time.Millisecond)
-		_, err := server.Write([]byte("Content-Type: auth/request\r\n\r\n"))
+		_, err := server.Write(eventFrame)
 		assert.NoError(t, err)
 	}
 

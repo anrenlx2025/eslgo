@@ -35,6 +35,15 @@ var DefaultInboundOptions = InboundOptions{
 	AuthTimeout: 5 * time.Second,
 }
 
+// Inbound connections default to a read liveness deadline (hzszxx ADR-0015):
+// FreeSWITCH sends connection-level HEARTBEAT events roughly every 20s
+// regardless of call traffic, so 65s (3x margin + jitter) with no inbound
+// message of any kind proves the read path is dead. Promoted fields cannot be
+// set in a composite literal, hence the assignment here.
+func init() {
+	DefaultInboundOptions.ReadKeepalive = 65 * time.Second
+}
+
 // Dial - Connects to FreeSWITCH ESL at the provided address and authenticates with the provided password. onDisconnect is called when the connection is closed either by us, FreeSWITCH, or network error
 func Dial(address, password string, onDisconnect func()) (*Conn, error) {
 	opts := DefaultInboundOptions
